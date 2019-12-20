@@ -3,10 +3,10 @@ const bodyParser = require('body-parser');
 const graphQlHttp = require('express-graphql');
 const { buildSchema } = require('graphql');
 const mongoose = require('mongoose');
-const bcrypt = requre('bcryptjs');
+const bcrypt = require('bcryptjs');
 
 const Event = require('./models/event');
-const User = requre('./models/user');
+const User = require('./models/user');
 
 const app = express();
 
@@ -75,22 +75,38 @@ app.use(
                 title: args.eventInput.title,
                 description: args.eventInput.description,
                 price: +args.eventInput.price,
-                date: new Date(args.eventInput.date)
+                date: new Date(args.eventInput.date),
+                creator: '5dfcce8d9c6f2d061a8e9717'
             });
+            let createdEvent;
             return event
                 .save()
                 .then(result => {
-                    console.log(result);
-                    //return { ...result._doc };
-                    return { ...result._doc, _id: result._doc._id.toString() };
-                }).catch(err => {
+                    createdEvent = { ...result._doc, _id: result._doc._id.toString() };
+                    return User.findById('5dfcce8d9c6f2d061a8e9717');
+                })
+                .then(user => {
+                    if (!user) {
+                        throw new Error('User not found.');
+                    }
+                    user.createdEvents.push(event);
+                    return user.save();
+                })
+                .then(result => {
+                    return createdEvent;
+                })
+                .catch(err => {
                     console.log(err);
                     throw err;
                 });
         },
         createUser: args => {
-            return bcrypt.hash(args.userInput.password, 12)
-                .then(hashedPassword => {
+            return User.findOne({email: args.userInput.email}).then(user => {
+                if (user) {
+                    throw new Error('User exists already.');
+                }
+                return bcrypt.hash(args.userInput.password, 12); // ---
+            }).then(hashedPassword => {
                     const user = new User({
                         email: args.userInput.email,
                         password: hashedPassword
@@ -98,7 +114,7 @@ app.use(
                     return user.save();
                 })
                 .then(result => {
-                    return { ...result._doc, _id: result.id }; //  00:13:20 -  !! здесь остановился
+                    return { ...result._doc, password: null, _id: result.id };
                 })
                 .catch(err => {
                     throw err;
