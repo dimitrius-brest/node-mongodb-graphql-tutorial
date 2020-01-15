@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 
 const Event = require('../../models/event');
 const User = require('../../models/user');
-
+const Booking = require('../../models/booking');
 
 const events = async eventIds => {
     try {
@@ -47,7 +47,22 @@ module.exports = {
                     date: new Date(event._doc.date).toISOString(),
                     creator: user.bind(this, event._doc.creator)
                 };
-            })
+            });
+        } catch (err) {
+            throw err;
+        }
+    },
+    bookings: async () => {
+        try {
+            const bookings = await Booking.find();
+            return bookings.map(booking => {
+                return {
+                    ...booking._doc,
+                    _id: booking.id,
+                    createdAt: new Date(booking._doc.createdAt).toISOString(),
+                    updatedAt: new Date(booking._doc.updatedAt).toISOString()
+                };
+            });
         } catch (err) {
             throw err;
         }
@@ -103,5 +118,19 @@ module.exports = {
         } catch (err) {
             throw err;
         }
+    },
+    bookEvent: async args => {
+        const fetchedEvent = await Event.findOne({_id: args.eventId});
+        const booking = new Booking({
+            user: '5e1c670c1e400b2504bcfb9d',
+            event: fetchedEvent
+        });
+        const result = await booking.save();
+        return {
+            ...result._doc,
+            _id: result.id,
+            createdAt: new Date(result._doc.createdAt).toISOString(),
+            updatedAt: new Date(result._doc.updatedAt).toISOString()
+        };
     }
 };
